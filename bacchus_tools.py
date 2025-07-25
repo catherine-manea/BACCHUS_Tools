@@ -15,7 +15,7 @@ from scipy import interpolate
 
 
 
-BACCHUS_DIR = "/mnt/Primary/astroHome/nmyers/BACCHUS_v70_fordistribution/"
+BACCHUS_DIR = "/mnt/home/cfilion/abundances/BACCHUS/"
 # BACCHUS_DIR = "/Users/nmyers/dissertation/keck_IAU_results"
 def retrieve_star_params(star):
     par = Table.read(BACCHUS_DIR+"{}/best_parameters.tab".format(star), format='ascii')
@@ -180,7 +180,7 @@ def update_star_param_file(star, spec_loc = '', teff = None, logg = None, mh = N
 def get_star_param(star):
     print("First changing to bacchus directory...")
     os.chdir(BACCHUS_DIR)
-    subprocess.call(['bacchus.param',star], cwd='./')
+    subprocess.run([BACCHUS_DIR+'bacchus.param',star])
     return 0
 
 def get_last_runs_params(star):
@@ -352,7 +352,7 @@ def get_abund(star, elements = [ "Mo", "Ru", "Gd", "Dy", "Yb", 'Li', 'C', 'N', '
         print(star, " has robust parameters. getting abundances now.")
         print("Working on ", star)
         for el in elements:
-            subprocess.call(['bacchus.abund',star,el])
+            subprocess.call([BACCHUS_DIR+'bacchus.abund',star,el])
     else:
         print("parameters did not converge. not doing bacchus.abund")
 
@@ -414,7 +414,7 @@ def build_abund_sensitivity_stars(ref, elements = ["Fe", "Ru", "Gd", "Dy", "Yb",
         make_bracket_abund_table(star)
         get_bracket_abunds(star)
 
-
+'''
 def extract_abunds(object, sub=None):
     print("Producing abundance summary for ", object)
     all_els = np.array([])
@@ -453,7 +453,7 @@ def extract_abunds(object, sub=None):
     big_t = Table([all_els, all_lines, all_abunds, all_flags, all_syn_flags, all_eqw_flags, all_int_flags], names=('Element', 'Line', 'A', 'Flag', 'SynFlag', 'EqFlag', 'IntFlag'))
     big_t.write(BACCHUS_DIR+object+'/all_A_abunds.txt', format='ascii', overwrite=True)
     return big_t
-
+'''
 def get_diff_abund(ref, star, nodir=False):
     if nodir:
         ref_t = Table.read(ref+'/all_A_abunds.txt', format='ascii')
@@ -596,7 +596,7 @@ def get_diff(ref, path_ref, star, path_star, linelist = None):
     dt = Table([els, good_lines, diff_abunds], names=('Element', 'Line', 'Delta_Abund'))
     dt.write(BACCHUS_DIR+"/diff_against_{}".format(ref)+'/'+star+'_diff_against_'+ref+'.txt', format='ascii', overwrite=True)
 
-
+'''
 def extract_abunds(object, path=BACCHUS_DIR+'/'):
     #print("Producing abundance summary for ", object)
     all_els = np.array([])
@@ -769,7 +769,189 @@ def get_bracket_abunds(object, lineselection = None, trust_flags = True, path=BA
         t_sum.write('{}/{}_bracket_abunds_summary.txt'.format(write_path,object), format='ascii', overwrite=True)
     #print('wrote to ', path+object+'/{}_bracket_abunds_summary.txt'.format(object))
     big_t.write(path+object+'/{}_all_abunds.txt'.format(object), format='ascii', overwrite=True)
+'''
+def extract_abunds(obj, path=BACCHUS_DIR+'/', verbose = 3):
+    if type(obj) != str:
+        obj = str(obj)
+    if verbose>0:
+        print("Producing abundance summary for ", obj)
+    all_els = np.array([])
+    all_lines = np.array([])
+    all_eqw_abunds = np.array([])
+    all_int_abunds = np.array([])
+    all_chi2_abunds =  np.array([])
+    all_syn_abunds = np.array([])
+    all_flags = np.array([])
+    all_syn_flags = np.array([])
+    all_eqw_flags = np.array([])
+    all_int_flags = np.array([])
+    all_chi2_flags = np.array([])
+    all_abund_files = glob.glob(path+obj+"/*-{}.abu".format(obj))
+    for af in all_abund_files:
+        try:
+            t = Table.read(af, format='ascii',names = ['lambda', 'eqw_obs', 'syn', 'flag_syn', 'eqw',  'flag_eqw',
+          'int', 'flag_int', 'chi2', 'flag_chi2', 'chi2_val',  'SNR', 'rvcor', 
+          'limit_syn', 'limit_eqw', 'limit_int'])
+            element = af.split('/')[-1].split('-')[0]
+            if verbose > 0:
+                print(len(t), ' lines for ', element)
 
+            all_els = np.append(all_els, np.repeat(element, len(t)))
+            all_lines = np.append(all_lines, np.array(t['lambda']))
+            all_syn_abunds = np.append(all_syn_abunds, np.array(t['syn']))
+            all_syn_flags = np.append(all_syn_flags, np.array(t['flag_syn']))
+            all_eqw_abunds = np.append(all_eqw_abunds, np.array(t['eqw']))
+            all_eqw_flags = np.append(all_eqw_flags, np.array(t['flag_eqw']))
+            all_int_abunds = np.append(all_int_abunds, np.array(t['int']))
+            all_int_flags = np.append(all_int_flags, np.array(t['flag_int']))
+            all_chi2_abunds = np.append(all_chi2_abunds, np.array(t['chi2']))
+            all_chi2_flags = np.append(all_chi2_flags, np.array(t['flag_chi2']))
+        except:
+            print("Couldn't open file ", af)
+            pass
+    big_t = Table([all_els, all_lines, all_syn_abunds, all_syn_flags, all_eqw_abunds, all_eqw_flags,
+                all_int_abunds, all_int_flags, all_chi2_abunds, all_chi2_flags], names=\
+                ('Element', 'Line', 'SynAbund', 'SynFlag', 'EqwAbund', 'EqwFlag', 
+                'IntAbund', 'IntFlag', 'Chi2Abund', 'Chi2Flag'))
+
+    big_t.write(path+obj+'/all_A_abunds.txt', format='ascii', overwrite=True)
+    return big_t
+#%%
+def make_bracket_abund_table(obj, lineselection = None, path=BACCHUS_DIR+'/',write_path = None, 
+            verbose = 3, tol = 0.1):
+    if lineselection is not None:
+        lineselect = Table.read(lineselection, format='ascii.csv')
+        # print(lineselect)
+    big_t = extract_abunds(obj, path)
+    big_t['x_h'] = 10**(big_t['Chi2Abund'] - 12) #matching original 
+    s = Table.read(BACCHUS_DIR+'/'+"solabu.dat", format='ascii')
+    keys = list(np.array(s['col1']))
+    values = list(np.array(s['col2']))
+    sol_abund_dict = dict(zip(keys, values))
+
+    big_t['sol_A'] = np.zeros(len(big_t))
+    for i in range(len(big_t)):
+        big_t['sol_A'][i] = sol_abund_dict[np.array(big_t['Element'])[i]]
+    big_t['sol_x_h'] = 10**(big_t['sol_A'] - 12)
+    big_t['[X/H]'] = np.log10(big_t['x_h']/big_t['sol_x_h'])
+    big_t['Used?'] = np.repeat(False, len(big_t))
+    good_fe = np.where((big_t['Element'] == 'Fe') & (big_t['Chi2Flag'] == 1) & (big_t['SynFlag'] == 1) & (big_t['EqwFlag'] == 1) & (big_t['IntFlag'] == 1))
+    big_t['Used?'][good_fe] = True
+    #finding which method gives maximum, minimum estimate for each line
+    max_abu = np.max(np.array([big_t['SynAbund'],big_t['EqwAbund'], big_t['IntAbund'], big_t['Chi2Abund']]), axis=0)
+    min_abu = np.min(np.array([big_t['SynAbund'],big_t['EqwAbund'], big_t['IntAbund'], big_t['Chi2Abund']]), axis=0)
+    for el in set(big_t['Element']):
+        #if difference between max and min > tolerance or flag = 0 don't use this line
+        good = np.where((big_t['Element'] == el) & (abs(max_abu - min_abu) < tol) & (big_t['IntFlag'] == 1) & \
+            (big_t['SynFlag']==1) & (big_t['Chi2Flag']==1) & (big_t['EqwFlag'] == 1))
+        
+        if lineselection is not None:
+            if verbose > 0:
+                print('doing additional line selection based on input selection')
+            for g in good[0]:
+                if big_t['Line'][g] in lineselect['line']:
+                    big_t['Used?'][g] = True
+        else:
+            big_t['Used?'][good] = True
+    #print(big_t.colnames)
+    big_t.write(path+obj+'/{}_all_abunds.txt'.format(obj), format='ascii', overwrite=True)
+    if write_path is not None:
+        big_t.write('{}/{}_all_abunds.txt'.format(write_path,obj), format='ascii', overwrite=True)
+    print('wrote to ', path+obj+'/{}_all_abunds.txt'.format(obj))
+
+def get_bracket_abunds(obj, lineselection = None, trust_flags = True, path=BACCHUS_DIR+'/',write_path = None, 
+            tol = 0.1, verbose=3):
+    if trust_flags == True:
+        print("running make_bracket_abund_table")
+        make_bracket_abund_table(obj, lineselection=lineselection, path=path, tol=tol, verbose=verbose)
+    t_sum = Table(names=('Abund', 'A_mean', 'A_std','A_stderr', 'Mean', 'Std Dev', 'Std Err'),
+                  dtype=(str, 'f4', 'f4', 'f4','f4', 'f4', 'f4'))
+
+    big_t = Table.read(path+obj+'/{}_all_abunds.txt'.format(obj), format='ascii')
+    good_fe = np.where((big_t['Used?'] == 'True') & (big_t['Element'] == 'Fe'))
+    mean_fe_h = np.nanmedian(big_t['[X/H]'][good_fe])
+    std_fe_h = np.nanstd(big_t['[X/H]'][good_fe])
+    num_lines_fe = np.sqrt(len(big_t['[X/H]'][good_fe]))
+    A_mean_fe_h = np.nanmedian(big_t['Chi2Abund'][good_fe])
+    A_std_fe_h = np.nanstd(big_t['Chi2Abund'][good_fe])
+    A_num_lines_fe = np.sqrt(len(big_t['Chi2Abund'][good_fe]))
+    t_sum.add_row(['[Fe/H]', A_mean_fe_h, A_std_fe_h, A_std_fe_h/A_num_lines_fe, mean_fe_h, std_fe_h, std_fe_h/num_lines_fe])
+    if verbose > 0:
+        print("[Fe/H] = ", mean_fe_h, ' +/- ', std_fe_h/num_lines_fe)
+    big_t['[X/Fe]'] = big_t['[X/H]'] - mean_fe_h
+    for el in set(big_t['Element']):
+        good = np.where((big_t['Used?'] == 'True') & (big_t['Element'] == el))
+        mean_x_fe = np.nanmedian(big_t['[X/Fe]'][good])
+        mean_x_h = np.nanmedian(big_t['[X/H]'][good])
+        std_x_fe = np.nanstd(big_t['[X/Fe]'][good])
+        num_lines_x_fe = np.sqrt(len(big_t['[X/Fe]'][good]))
+        A_mean_x = np.nanmedian(big_t['Chi2Abund'][good])
+        A_std_x = np.nanstd(big_t['Chi2Abund'][good])
+        A_num_lines_x = np.sqrt(len(big_t['Chi2Abund'][good]))
+        if verbose > 0:
+            print("[{}/Fe] = ".format(el), mean_x_fe, ' +/- ', std_x_fe/num_lines_x_fe)
+        if el != 'Fe':
+            t_sum.add_row(["[{}/Fe]".format(el),  A_mean_x, A_std_x, A_std_x/A_num_lines_x, mean_x_fe, std_x_fe, std_x_fe/num_lines_x_fe])
+            t_sum.add_row(["[{}/H]".format(el), 0, 0, 0,mean_x_h, 0, 0])
+
+    s = Table.read(BACCHUS_DIR+'/'+"solabu.dat", format='ascii')
+    #print(s)
+    keys = list(np.array(s['col1']))
+    values = list(np.array(s['col2']))
+    sol_abund_dict = dict(zip(keys, values))
+    #sol_abund_dict = {'C':8.43, 'O':8.69, 'Na':6.24, 'Mg': 7.60, 'Si':7.51, 'Ca':6.34, 'Fe':7.50, 'Ba':2.18, 'Y':2.21, 'Al':6.45,
+    #'Cr':5.64, 'Ti':4.95}
+    goodmg = np.where((big_t['Used?'] == 'True') & (big_t['Element'] == 'Mg'))
+    goodsi = np.where((big_t['Used?'] == 'True') & (big_t['Element'] == 'Si'))
+    mean_nobrack_mg = np.nanmedian(big_t['x_h'][goodmg])
+    mean_nobrack_si = np.nanmedian(big_t['x_h'][goodsi])
+
+    sol_mg_h = (sol_abund_dict['Mg'] - 12)
+    sol_si_h = (sol_abund_dict['Si'] - 12)
+    sol_c_h = (sol_abund_dict['C'] - 12)
+    sol_o_h = (sol_abund_dict['O'] - 12)
+    mg_si_temp = mean_nobrack_mg/mean_nobrack_si
+    mg_si = (10**(t_sum['Mean'][np.where(t_sum['Abund']=='[Mg/H]')] + sol_mg_h))/(10**(t_sum['Mean'][np.where(t_sum['Abund']=='[Si/H]')] + sol_si_h))
+    c_o = (10**(t_sum['Mean'][np.where(t_sum['Abund']=='[C/H]')] + sol_c_h))/(10**(t_sum['Mean'][np.where(t_sum['Abund']=='[O/H]')] + sol_o_h))
+    #t_sum.add_row(["Mg/Si", mg_si, 0, 0])
+    #t_sum.add_row(["C/O", c_o, 0, 0])
+    par = Table.read(path+"{}/best_parameters.tab".format(obj), format='ascii')
+    # try:
+    if len(par['conv']) > 1:
+        line = np.where(par['conv'] == 1)[0][0] -1
+        teff = par['Teff'][line]
+        eteff = par['err'][line]
+        logg = par['logg'][line]
+        elogg = par['err_1'][line]
+        met = par['met'][line]
+        emet = par['err_2'][line]
+        chi = par['xit'][line]
+        echi = par['err_3'][line]
+    elif len(par['conv']) == 1:
+        line = np.where(par['conv'] == 1)[0][0]
+        teff = par['initTeff'][line]
+        eteff = par['err'][line]
+        logg = par['initlogg'][line]
+        elogg = par['err_1'][line]
+        met = par['initmet'][line]
+        emet = par['err_2'][line]
+        chi = par['initxit'][line]
+        echi = par['err_3'][line]
+
+    t_sum.add_row(["Teff", 0, 0, 0, teff, 0, eteff])
+    t_sum.add_row(["logg", 0, 0, 0, logg, 0, elogg])
+    t_sum.add_row(["z", 0, 0, 0, met, 0, emet])
+    t_sum.add_row(["x", 0, 0, 0, chi, 0, echi])
+    # except:
+    #     pass#print(object, "params didn't actually converge?")
+    #print(t_sum)
+    # print(t_sum)
+    # print(path, object, )
+    t_sum.write(path+obj+'/{}_bracket_abunds_summary.txt'.format(obj), format='ascii', overwrite=True)
+    if write_path is not None:
+        t_sum.write('{}/{}_bracket_abunds_summary.txt'.format(write_path,obj), format='ascii', overwrite=True)
+    #print('wrote to ', path+object+'/{}_bracket_abunds_summary.txt'.format(object))
+    big_t.write(path+obj+'/{}_all_abunds.txt'.format(obj), format='ascii', overwrite=True)
 #####
 
 def get_synth_bounds_(star,element,guess,steps = []):
@@ -822,7 +1004,7 @@ def update_par(star,element,value):
 
 #USE ONLY FOR ITERATING BACCHUS.EQW OR BACCHUS.PARAM
 def reset_directory(star_name, elems = []):
-    os.chdir(bacchus_path + star_name + '/')
+    os.chdir(BACCHUS_DIR + star_name + '/')
     if len(elems) == 0:
         elems = ['Fe','Si']
     for i in elems:
@@ -884,12 +1066,13 @@ def load_parameters(star):
 
 def get_convolution(star):
     os.chdir(BACCHUS_DIR)
-    subprocess.call(['bacchus.eqw',star,'Si'])
+    subprocess.call([BACCHUS_DIR+'bacchus.eqw',star,'Ni'])
+    #was Si
     # subprocess.call(['bacchus.eqw',star,'O'])
 
 def get_eqw(star,el):
     os.chdir(BACCHUS_DIR)
-    subprocess.call(['bacchus.eqw',star,el])
+    subprocess.call([BACCHUS_DIR+'bacchus.eqw',star,el])
 
 def get_line_abundance(star,element,line):
     os.chdir(BACCHUS_DIR)
