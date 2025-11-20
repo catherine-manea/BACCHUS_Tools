@@ -55,6 +55,6 @@ b.redo_diff_if_necessary(star2, star)
 #etc.
 </code>
 
-Step 13: once you're happy with your differential stellar parameters, get your abundances using the same code as in Step 10.
+Step 13: once you're happy with your differential stellar parameters, get your abundances using the same code as in Step 10.  Note, you will need an extra step afterwards to get differential abundances relative to your reference star, but that tool is not yet publicly available.  Let me know if anyone wants it!!
 
 More tools to come, if you use this code and see something else you want, please let me know: catherinemanea@gmail.com OR open an issue.
