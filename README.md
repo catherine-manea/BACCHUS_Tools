@@ -32,10 +32,9 @@ b.get_star_param(star)
 </code>
 
 
-<b>Step 9:</b> let's iterate on the stellar parameters until they converge (giving up after 10 attempts)
+<b>Step 9:</b> if you don't like the output from the last run, let's rerun our stellar parameters, using the output from the last run as our initial guess:
 <code>
-for i in range(10):
-&emsp; b.redo_if_necessary(star)
+b.redo_if_necessary(star)
 </code>
 
 <b>Step 10:</b> let's get the star's abundances in Fe, Mg, and Nd:
@@ -43,7 +42,7 @@ for i in range(10):
 b.get_abund(star, elements=['Fe', 'Mg', 'Nd'])
 </code>
 
-<b>Step 11:</b> now, let's extract all the abundances and produce some summary tables (saves tables in a few new files):
+<b>Step 11:</b> if you would like simple summary tables, let's extract all the abundances and produce some (saves ascii tables in a few new files in your STAR directory):
 <code>
 b.get_bracket_abunds(star)
 </code>
@@ -51,11 +50,11 @@ b.get_bracket_abunds(star)
 <b>Step 12:</b> now, let's get differential stellar parameters for star2 with respect to star (see, e.g., Yong et al. 2023).  First edit stellar_parameters.tab to include info for star2, and then run:
 <code>
 b.run_star_diff(star2, star)
-for i in range(10):
-&emsp; b.redo_diff_if_necessary(star2, star)
+#if you wanna redo your stellar parameters using the output of the last run as the initial guess:
+b.redo_diff_if_necessary(star2, star)
+#etc.
 </code>
 
-<b>Step 13:</b> finally, let's compile the line-by-line differential abundances of star2 against star into a table (saves as new file):
-<code>
-r.get_diff(star, BACCHUS_DIR, star2, BACCHUS_DIR)
-</code>
+Step 13: once you're happy with your differential stellar parameters, get your abundances using the same code as in Step 10.
+
+More tools to come, if you use this code and see something else you want, please let me know: catherinemanea@gmail.com OR open an issue.
